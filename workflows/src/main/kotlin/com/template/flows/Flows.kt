@@ -14,25 +14,25 @@ import net.corda.core.utilities.ProgressTracker
 // *********
 @InitiatingFlow
 @StartableByRPC
-class Initiator(val administration:Party,val appear :String) : FlowLogic<Unit>() {
+class Initiator(val administration: Party, val appear: String) : FlowLogic<Unit>() {
     companion object {
-        object GENERATING : ProgressTracker.Step("Generating transaction based on new Vaccine.")
-        object VERIFYING : ProgressTracker.Step("Verifying contract constraints.")
-        object SIGNING : ProgressTracker.Step("Signing transaction with our private key.")
+        object STARTING : ProgressTracker.Step("Starting Transaction");
+        object FINISHING : ProgressTracker.Step("Transaction Successful")
     }
 
-    override val progressTracker = ProgressTracker(GENERATING, VERIFYING, SIGNING)
+    override val progressTracker = ProgressTracker(STARTING, FINISHING)
 
     @Suspendable
     override fun call() {
+        progressTracker.currentStep = STARTING
         val notary = serviceHub.networkMapCache.notaryIdentities[0]
-        val state = AppearState(ourIdentity,administration,appear)
-        val command = Command(AppearContract.Commands.Action(),ourIdentity.owningKey)
-        val txBuilder = TransactionBuilder(notary=notary).addOutputState(state,AppearContract.ID).addCommand(command)
-        progressTracker.currentStep = SIGNING
+        val state = AppearState(ourIdentity, administration, appear)
+        val command = Command(AppearContract.Commands.Action(), ourIdentity.owningKey)
+        val txBuilder = TransactionBuilder(notary = notary).addOutputState(state, AppearContract.ID).addCommand(command)
         val signTx = serviceHub.signInitialTransaction(txBuilder)
-        val responderSession =initiateFlow(administration)
-        subFlow(FinalityFlow(signTx,responderSession))
+        val responderSession = initiateFlow(administration)
+        subFlow(FinalityFlow(signTx, responderSession))
+        progressTracker.currentStep = FINISHING
     }
 }
 
